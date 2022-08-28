@@ -1,13 +1,131 @@
-# build ignore build directory
+# Ignore build directory
 build/
-# ignore build script
-install-docker.ps1
 
-#ignore binaries and other stuff
+# Ignore any scripts
+*.ps1
+
+# Ignore editor artefacts
+/.dir-locals.el
+
+# Top level excludes
+/Makefile.in
+/Makefile
+/MINFO
+/TABLE
 /*.pc
+/rehash.time
+/inc.*
+/makefile.*
 /out.*
 /tmp.*
-/inc.*
+/configdata.pm
+
+# Links under apps
+/apps/CA.pl
+/apps/tsget
+/apps/tsget.pl
+/apps/md4.c
+
+# Executables
+/apps/openssl
+/test/sha256t
+/test/sha512t
+/test/gost2814789t
+/test/ssltest_old
+/test/*test
+/test/fips_aesavs
+/test/fips_desmovs
+/test/fips_dhvs
+/test/fips_drbgvs
+/test/fips_dssvs
+/test/fips_ecdhvs
+/test/fips_ecdsavs
+/test/fips_rngvs
+/test/fips_test_suite
+/test/ssltest_old
+/test/x509aux
+/test/v3ext
+/test/versions
+/test/ossl_shim/ossl_shim
+/test/rsa_complex
+/test/confdump
+/test/bio_prefix_text
+/test/evp_extra_test2
+/test/evp_pkey_ctx_new_from_name
+/test/threadstest_fips
+/test/timing_load_creds
+
+# Certain files that get created by tests on the fly
+/test-runs
+/test/buildtest_*
+/test/provider_internal_test.cnf
+/test/fipsmodule.cnf
+/providers/fipsmodule.cnf
+
+# Fuzz stuff.
+# Anything without an extension is an executable on Unix, so we keep files
+# with extensions.  And we keep the corpora subddir versioned as well.
+# Anything more generic with extensions that should be ignored will be taken
+# care of by general ignores for those extensions (*.o, *.obj, *.exe, ...)
+/fuzz/*
+!/fuzz/README*
+!/fuzz/corpora
+!/fuzz/*.*
+
+# Misc auto generated files
+/doc/man7/openssl_user_macros.pod
+/tools/c_rehash
+/tools/c_rehash.pl
+/util/shlib_wrap.sh
+/util/wrap.pl
+/tags
+/TAGS
+*.map
+*.ld
+/apps/progs.c
+/apps/progs.h
+
+# Windows (legacy)
+/tmp32
+/tmp32.dbg
+/tmp32dll
+/tmp32dll.dbg
+/out32
+/out32.dbg
+/out32dll
+/out32dll.dbg
+/inc32
+/MINFO
+/ms/bcb.mak
+/ms/libeay32.def
+/ms/nt.mak
+/ms/ntdll.mak
+/ms/ssleay32.def
+/ms/version32.rc
+
+##### Generic patterns
+# Auto generated assembly language source files
+*.s
+!/crypto/*/asm/*.s
+/crypto/arm*.S
+/crypto/*/*.S
+*.asm
+!/crypto/*/asm/*.asm
+
+# Object files
+*.o
+*.obj
+
+# editor artefacts
+*.swp
+.#*
+\#*#
+*~
+
+# Certificate symbolic links
+*.0
+
+# All kinds of libraries and executables
 *.a
 *.so
 *.so.*
@@ -25,3 +143,19 @@ install-docker.ps1
 *.def
 *.rc
 *.res
+
+# Misc generated stuff
+Makefile.save
+/crypto/**/lib
+/engines/**/lib
+/ssl/**/lib
+*.bak
+cscope.*
+*.d
+*.d.tmp
+pod2htmd.tmp
+MAKE0[0-9][0-9][0-9].@@@
+
+# Windows manifest files
+*.manifest
+doc-nits
