@@ -336,7 +336,7 @@ int tls13_setup_key_block(SSL_CONNECTION *s)
 
     return 1;
 }
-
+// This looks interesting, wonder what it does.
 static int derive_secret_key_and_iv(SSL_CONNECTION *s, int sending,
                                     const EVP_MD *md,
                                     const EVP_CIPHER *ciph,
@@ -426,6 +426,12 @@ static int derive_secret_key_and_iv(SSL_CONNECTION *s, int sending,
     return 1;
 }
 
+/**
+ * Interesting function most likely it is where where we allocate the EVP_CIPHER_CTX for SSL_CONNECTIONS
+ * @param s
+ * @param which
+ * @return
+ */
 int tls13_change_cipher_state(SSL_CONNECTION *s, int which)
 {
 #ifdef CHARSET_EBCDIC
@@ -545,6 +551,7 @@ int tls13_change_cipher_state(SSL_CONNECTION *s, int which)
              * This ups the ref count on cipher so we better make sure we free
              * it again
              */
+            //IMPORTANT: this is where SSL_CIPHER is converted to EVP_CIPHER
             if (!ssl_cipher_get_evp_cipher(sctx, sslcipher, &cipher)) {
                 /* Error is already recorded */
                 SSLfatal_alert(s, SSL_AD_INTERNAL_ERROR);
@@ -664,6 +671,7 @@ int tls13_change_cipher_state(SSL_CONNECTION *s, int which)
     if (!ossl_assert(cipher != NULL))
         goto err;
 
+    // This looks interesting!!
     if (!derive_secret_key_and_iv(s, which & SSL3_CC_WRITE, md, cipher,
                                   insecret, hash, label, labellen, secret, key,
                                   &keylen, iv, &ivlen, &taglen, ciph_ctx)) {

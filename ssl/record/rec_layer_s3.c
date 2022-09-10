@@ -459,6 +459,7 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf_, size_t len,
 
         i = do_ssl3_write(s, type, &(buf[tot]), pipelens, numpipes, 0,
                           &tmpwrit);
+        //write failed!
         if (i <= 0) {
             /* SSLfatal() already called if appropriate */
             /* XXX should we ssl3_release_write_buffer if i<0? */
@@ -488,7 +489,7 @@ int ssl3_write_bytes(SSL *ssl, int type, const void *buf_, size_t len,
         tot += tmpwrit;
     }
 }
-
+// seems to be where magic happens?
 int do_ssl3_write(SSL_CONNECTION *s, int type, const unsigned char *buf,
                   size_t *pipelens, size_t numpipes,
                   int create_empty_fragment, size_t *written)
@@ -857,6 +858,7 @@ int do_ssl3_write(SSL_CONNECTION *s, int type, const unsigned char *buf,
         }
     }
 
+    // TODO: this is most likely the place where encryption happens!!!
     if (s->statem.enc_write_state == ENC_WRITE_STATE_WRITE_PLAIN_ALERTS) {
         /*
          * We haven't actually negotiated the version yet, but we're trying to

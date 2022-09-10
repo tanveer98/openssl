@@ -45,12 +45,14 @@ IMPLEMENT_tls_meth_func(TLS1_VERSION, SSL_METHOD_NO_SUITEB, SSL_OP_NO_TLSv1,
 IMPLEMENT_ssl3_meth_func(sslv3_method, ossl_statem_accept, ossl_statem_connect)
 #endif
 /*-
- * TLS/SSLv3 server methods
+ * TLS/SSLv3 server methods, they will not work with SSL_connect(?), only SSL_accept(?)
  */
+// definition of TLS_server_method() {}
 IMPLEMENT_tls_meth_func(TLS_ANY_VERSION, 0, 0,
                         TLS_server_method,
                         ossl_statem_accept,
                         ssl_undefined_function, TLSv1_2_enc_data)
+// definition of tlsv1_3_server_method() {}
 IMPLEMENT_tls_meth_func(TLS1_3_VERSION, 0, SSL_OP_NO_TLSv1_3,
                         tlsv1_3_server_method,
                         ossl_statem_accept,

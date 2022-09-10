@@ -34,22 +34,23 @@ const unsigned char tls12downgrade[] = {
 };
 
 /* The list of available TLSv1.3 ciphers */
+// Interesting place, seems like we define TLS1.3 cipher suites here.
 static SSL_CIPHER tls13_ciphers[] = {
     {
-        1,
-        TLS1_3_RFC_AES_128_GCM_SHA256,
-        TLS1_3_RFC_AES_128_GCM_SHA256,
-        TLS1_3_CK_AES_128_GCM_SHA256,
-        SSL_kANY,
-        SSL_aANY,
-        SSL_AES128GCM,
-        SSL_AEAD,
-        TLS1_3_VERSION, TLS1_3_VERSION,
-        0, 0,
-        SSL_HIGH,
-        SSL_HANDSHAKE_MAC_SHA256,
-        128,
-        128,
+        1, //valid: boolean
+        TLS1_3_RFC_AES_128_GCM_SHA256, //name: string
+        TLS1_3_RFC_AES_128_GCM_SHA256, //stdname: string
+        TLS1_3_CK_AES_128_GCM_SHA256, //id: uint32_t - id from iana tls registry(?)
+        SSL_kANY, //algorithm_mkey: uint32_t - key exchange algorithm
+        SSL_aANY, //algorithm_auth: uint32_t - server auth algorithm
+        SSL_AES128GCM, //algorithm_enc: uint32_t - symmetric key enc algorithm
+        SSL_AEAD, //algorithm_mac: uint32_t authentication algorithm
+        TLS1_3_VERSION, TLS1_3_VERSION, //int - min & max tls version
+        0, 0, //int - min & max dtls version
+        SSL_HIGH, //algo_strength: uint32_t - strength and  other flags
+        SSL_HANDSHAKE_MAC_SHA256, //algorithm2: uint32_t other flags
+        128, //strength_bits: int32_t - block size???
+        128, //alg_bits: uint32_t - ???
     }, {
         1,
         TLS1_3_RFC_AES_256_GCM_SHA384,
@@ -113,6 +114,25 @@ static SSL_CIPHER tls13_ciphers[] = {
         64, /* CCM8 uses a short tag, so we have a low security strength */
         128,
     }
+    /**
+     * TODO: add something like here?
+     * {
+        1,
+        TLS1_3_RFC_XCHACHA20_POLY1305_SHA256,
+        TLS1_3_RFC_XCHACHA20_POLY1305_SHA256,
+        TLS1_3_CK_XCHACHA20_POLY1305_SHA256,
+        SSL_kANY,
+        SSL_aANY,
+        SSL_XCHACHA20POLY1305,
+        SSL_AEAD,
+        TLS1_3_VERSION, TLS1_3_VERSION,
+        0, 0,
+        SSL_HIGH,
+        SSL_HANDSHAKE_MAC_SHA256,
+        256,
+        256,
+    },
+     */
 };
 
 /*
@@ -3236,6 +3256,7 @@ static SSL_CIPHER ssl3_scsvs[] = {
     },
 };
 
+//simply ap.id - bp.id
 static int cipher_compare(const void *a, const void *b)
 {
     const SSL_CIPHER *ap = (const SSL_CIPHER *)a;
@@ -3246,6 +3267,7 @@ static int cipher_compare(const void *a, const void *b)
     return ap->id < bp->id ? -1 : 1;
 }
 
+//wonder why we need to sort cipher list
 void ssl_sort_cipher_list(void)
 {
     qsort(tls13_ciphers, TLS13_NUM_CIPHERS, sizeof(tls13_ciphers[0]),

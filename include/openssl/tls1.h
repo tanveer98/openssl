@@ -53,7 +53,7 @@ extern "C" {
 
 # define TLS1_get_client_version(s) \
         ((SSL_client_version(s) >> 8) == TLS1_VERSION_MAJOR ? SSL_client_version(s) : 0)
-
+//TLS error codes: defined at https://www.rfc-editor.org/rfc/rfc3546 (page 18)
 # define TLS1_AD_DECRYPTION_FAILED       21
 # define TLS1_AD_RECORD_OVERFLOW         22
 # define TLS1_AD_UNKNOWN_CA              48/* fatal */
@@ -334,7 +334,7 @@ int SSL_CTX_set_tlsext_ticket_key_evp_cb
     (SSL_CTX *ctx, int (*fp)(SSL *, unsigned char *, unsigned char *,
                              EVP_CIPHER_CTX *, EVP_MAC_CTX *, int));
 
-/* PSK ciphersuites from 4279 */
+/* PSK ciphersuites from RFC4279 https://www.rfc-editor.org/rfc/rfc4279 */
 # define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A
 # define TLS1_CK_PSK_WITH_3DES_EDE_CBC_SHA               0x0300008B
 # define TLS1_CK_PSK_WITH_AES_128_CBC_SHA                0x0300008C
@@ -348,7 +348,7 @@ int SSL_CTX_set_tlsext_ticket_key_evp_cb
 # define TLS1_CK_RSA_PSK_WITH_AES_128_CBC_SHA            0x03000094
 # define TLS1_CK_RSA_PSK_WITH_AES_256_CBC_SHA            0x03000095
 
-/* PSK ciphersuites from 5487 */
+/* PSK ciphersuites from RFC5487 */
 # define TLS1_CK_PSK_WITH_AES_128_GCM_SHA256             0x030000A8
 # define TLS1_CK_PSK_WITH_AES_256_GCM_SHA384             0x030000A9
 # define TLS1_CK_DHE_PSK_WITH_AES_128_GCM_SHA256         0x030000AA
@@ -586,9 +586,16 @@ int SSL_CTX_set_tlsext_ticket_key_evp_cb
 # define TLS1_CK_RSA_PSK_WITH_CHACHA20_POLY1305           0x0300CCAE
 
 /* TLS v1.3 ciphersuites */
+/* Cipher suites, complete list at
+ * https://wiki.mozilla.org/Security/Cipher_Suites
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
+ * values are same as IANA cipher suite registry(?), except the MSB is 0b0011/0x03 for some reason
+ * So for example, TLS_CHACHA20_POLY1305_SHA256 = 0x1303 ~ 0x03001303
+ */
 # define TLS1_3_CK_AES_128_GCM_SHA256                     0x03001301
 # define TLS1_3_CK_AES_256_GCM_SHA384                     0x03001302
 # define TLS1_3_CK_CHACHA20_POLY1305_SHA256               0x03001303
+//define a custom ID for XChaCha20?
 # define TLS1_3_CK_AES_128_CCM_SHA256                     0x03001304
 # define TLS1_3_CK_AES_128_CCM_8_SHA256                   0x03001305
 

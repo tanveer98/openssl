@@ -184,6 +184,7 @@ typedef struct ui_st UI;
 typedef struct ui_method_st UI_METHOD;
 
 typedef struct engine_st ENGINE;
+//weirdly enough, even though ssl_st is defined in `ssl_local.h`, the typedef is here for some reason :/
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
 

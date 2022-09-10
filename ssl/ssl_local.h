@@ -237,6 +237,7 @@
 # define SSL_AES256CCM8          0x00020000U
 # define SSL_eGOST2814789CNT12   0x00040000U
 # define SSL_CHACHA20POLY1305    0x00080000U
+// TODO: define a new value here? what should be the new value? `0x0100000U` ?
 # define SSL_ARIA128GCM          0x00100000U
 # define SSL_ARIA256GCM          0x00200000U
 # define SSL_MAGMA               0x00400000U
@@ -246,7 +247,7 @@
 # define SSL_AESCCM              (SSL_AES128CCM | SSL_AES256CCM | SSL_AES128CCM8 | SSL_AES256CCM8)
 # define SSL_AES                 (SSL_AES128|SSL_AES256|SSL_AESGCM|SSL_AESCCM)
 # define SSL_CAMELLIA            (SSL_CAMELLIA128|SSL_CAMELLIA256)
-# define SSL_CHACHA20            (SSL_CHACHA20POLY1305)
+# define SSL_CHACHA20            (SSL_CHACHA20POLY1305) //TODO: Also update here
 # define SSL_ARIAGCM             (SSL_ARIA128GCM | SSL_ARIA256GCM)
 # define SSL_ARIA                (SSL_ARIAGCM)
 # define SSL_CBC                 (SSL_DES | SSL_3DES | SSL_RC2 | SSL_IDEA \
@@ -488,6 +489,9 @@ struct ssl_cipher_st {
 };
 
 /* Used to hold SSL/TLS functions */
+//"polymorphic" struct, contains the behaviour of the method depending on the method type
+// for example in `TLS_server_method` defined in `ssl/methods.c` we create SSL_METHOD with accept = ossl_statem_accept and connect = undefined
+// on the other hand `TLS_client_method` returns SSL_METHOD with accept = undefined and connect = ossl_statem_connect
 struct ssl_method_st {
     int version;
     unsigned flags;
@@ -845,6 +849,9 @@ typedef struct tls_group_info_st {
 
 # define TLS_GROUP_FFDHE_FOR_TLS1_3 (TLS_GROUP_FFDHE|TLS_GROUP_ONLY_FOR_TLS1_3)
 
+/**
+ * SSL context. Contains SSL method (client or server mode), list of ciphers, certificate, sessions and other data!
+ */
 struct ssl_ctx_st {
     OSSL_LIB_CTX *libctx;
 
@@ -1196,7 +1203,7 @@ struct ssl_ctx_st {
     char *propq;
 
     int ssl_mac_pkey_id[SSL_MD_NUM_IDX];
-    const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX];
+    const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]; //wtf are EVP cipher?
     const EVP_MD *ssl_digest_methods[SSL_MD_NUM_IDX];
     size_t ssl_mac_secret_size[SSL_MD_NUM_IDX];
 
@@ -1220,6 +1227,7 @@ typedef struct cert_pkey_st CERT_PKEY;
 #define SSL_TYPE_QUIC_CONNECTION 1
 #define SSL_TYPE_QUIC_STREAM     2
 
+// usually SSL structs are allocated as part of the larger SSL_CONNECTION struct at least in `ssl/ssl_lib.c::ossl_ssl_connection_new`
 struct ssl_st {
     int type;
     SSL_CTX *ctx;
@@ -1230,6 +1238,7 @@ struct ssl_st {
     CRYPTO_EX_DATA ex_data;
 };
 
+//Interesting struct, wonder what it does.
 struct ssl_connection_st {
     /* type identifier and common data */
     struct ssl_st ssl;
@@ -1288,6 +1297,7 @@ struct ssl_connection_st {
     size_t init_num;               /* amount read/written */
     size_t init_off;               /* amount read/written */
 
+    // what is this?
     struct {
         long flags;
         size_t read_mac_secret_size;
@@ -1328,6 +1338,7 @@ struct ssl_connection_st {
         int total_renegotiations;
         int num_renegotiations;
         int in_read_app_data;
+        // what is this??
         struct {
             /* actually only need to be 16+20 for SSLv3 and 12 for TLS */
             unsigned char finish_md[EVP_MAX_MD_SIZE * 2];
@@ -1495,12 +1506,16 @@ struct ssl_connection_st {
     unsigned char server_app_traffic_secret[EVP_MAX_MD_SIZE];
     unsigned char exporter_master_secret[EVP_MAX_MD_SIZE];
     unsigned char early_exporter_master_secret[EVP_MAX_MD_SIZE];
+    // probably this is the actual cipher
     EVP_CIPHER_CTX *enc_read_ctx; /* cryptographic state */
+    // IV for the cipher
     unsigned char read_iv[EVP_MAX_IV_LENGTH]; /* TLSv1.3 static read IV */
     EVP_MD_CTX *read_hash;      /* used for mac generation */
     COMP_CTX *compress;         /* compression */
     COMP_CTX *expand;           /* uncompress */
+    // probably this is the actual cipher
     EVP_CIPHER_CTX *enc_write_ctx; /* cryptographic state */
+    // IV for the cipher
     unsigned char write_iv[EVP_MAX_IV_LENGTH]; /* TLSv1.3 static write IV */
     EVP_MD_CTX *write_hash;     /* used for mac generation */
     /* session info */
@@ -1836,6 +1851,17 @@ struct ssl_connection_st {
 # define SSL_CONNECTION_GET_CTX(sc) ((sc)->ssl.ctx)
 # ifndef OPENSSL_NO_QUIC
 #  include "quic/quic_local.h"
+/** ssl: SSL
+ * c: const qualifier ('' or 'const')
+ * if ssl == null
+ *      return null
+ * else if ssl.type == SSL_TYPE_SSL_CONNECTION
+ *      return (SSL_CONNECTION *) ssl
+ * else if ssl.type == SSL_TYPE_QUIC_CONNECTION
+ *      return (SSL_CONNECTION) ((QUIC_CONNECTION *) ssl).tls
+ * else
+ *      return null
+ */
 #  define SSL_CONNECTION_FROM_SSL_int(ssl, c)                      \
     ((ssl) == NULL ? NULL                                          \
      : ((ssl)->type == SSL_TYPE_SSL_CONNECTION                     \
@@ -2129,6 +2155,7 @@ typedef struct cert_st {
  * This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
  * of a mess of functions, but hell, think of it as an opaque structure :-)
  */
+// even more polymorphic stuff!
 typedef struct ssl3_enc_method {
     int (*enc) (SSL_CONNECTION *, SSL3_RECORD *, size_t, int,
                 SSL_MAC_BUF *, size_t);

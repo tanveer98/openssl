@@ -410,14 +410,31 @@ int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
         EVP_CIPHER_CTX_reset(ctx);
     return evp_cipher_init_internal(ctx, cipher, NULL, key, iv, enc, NULL);
 }
-
+/**
+ * Probably initalize EVP_CIPHER_CTX from EVP cipher?
+ * @param ctx
+ * @param cipher
+ * @param impl
+ * @param key
+ * @param iv
+ * @param enc
+ * @return
+ */
 int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                       ENGINE *impl, const unsigned char *key,
                       const unsigned char *iv, int enc)
 {
     return evp_cipher_init_internal(ctx, cipher, impl, key, iv, enc, NULL);
 }
-
+/**
+ * Seems to be the actual function to encrypt/decrypt?
+ * @param ctx
+ * @param out
+ * @param outl
+ * @param in
+ * @param inl
+ * @return
+ */
 int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
                      const unsigned char *in, int inl)
 {
@@ -427,6 +444,13 @@ int EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl,
         return EVP_DecryptUpdate(ctx, out, outl, in, inl);
 }
 
+/**
+ * What does this do?
+ * @param ctx
+ * @param out
+ * @param outl
+ * @return
+ */
 int EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *outl)
 {
     if (ctx->encrypt)

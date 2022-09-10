@@ -16,6 +16,7 @@
 #include "internal/provider.h"
 #include "crypto/context.h"
 
+// some more context related data!
 struct ossl_lib_ctx_st {
     CRYPTO_RWLOCK *lock, *rand_crngt_lock;
     OSSL_EX_DATA_GLOBAL global;

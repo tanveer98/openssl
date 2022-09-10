@@ -30,6 +30,7 @@ typedef struct {
 } ssl_cipher_table;
 
 /* Table of NIDs for each cipher */
+//definately need to add XChaCha20 here I guess used in `ssl_load_ciphers`
 static const ssl_cipher_table ssl_cipher_table_cipher[SSL_ENC_NUM_IDX] = {
     {SSL_DES, NID_des_cbc},     /* SSL_ENC_DES_IDX 0 */
     {SSL_3DES, NID_des_ede3_cbc}, /* SSL_ENC_3DES_IDX 1 */
@@ -319,6 +320,11 @@ static int get_optional_pkey_id(const char *pkey_name)
 
 #endif
 
+/**
+ * Loads the initial list of `ssl_cipher_methods`, md, signature and key exchange algorithms
+ * @param ctx
+ * @return
+ */
 int ssl_load_ciphers(SSL_CTX *ctx)
 {
     size_t i;
@@ -327,6 +333,7 @@ int ssl_load_ciphers(SSL_CTX *ctx)
     EVP_SIGNATURE *sig = NULL;
 
     ctx->disabled_enc_mask = 0;
+    //load EVP ciphers
     for (i = 0, t = ssl_cipher_table_cipher; i < SSL_ENC_NUM_IDX; i++, t++) {
         if (t->nid != NID_undef) {
             const EVP_CIPHER *cipher
@@ -338,6 +345,7 @@ int ssl_load_ciphers(SSL_CTX *ctx)
         }
     }
     ctx->disabled_mac_mask = 0;
+    //load EVP md
     for (i = 0, t = ssl_cipher_table_mac; i < SSL_MD_NUM_IDX; i++, t++) {
         const EVP_MD *md
             = ssl_evp_md_fetch(ctx->libctx, t->nid, ctx->propq);
@@ -361,6 +369,7 @@ int ssl_load_ciphers(SSL_CTX *ctx)
      * if theose algorithms are not available.
      */
     ERR_set_mark();
+    // load signature and key exchange algorithms
     sig = EVP_SIGNATURE_fetch(ctx->libctx, "DSA", ctx->propq);
     if (sig == NULL)
         ctx->disabled_auth_mask |= SSL_aDSS;
@@ -638,21 +647,38 @@ const EVP_MD *ssl_prf_md(SSL_CONNECTION *s)
 
 #define ITEM_SEP(a) \
         (((a) == ':') || ((a) == ' ') || ((a) == ';') || ((a) == ','))
-
+/**
+ * Make sure that `curr` is inserted at the end of the linkedList
+ * if its already inserted at any position oter than the end/tail, we remove it and re-insert it at the end
+ * @param head pointer to the head pointer of the linked list
+ * @param curr node to be added
+ * @param tail pointer to the tail pointer of the linked list.
+ */
 static void ll_append_tail(CIPHER_ORDER **head, CIPHER_ORDER *curr,
                            CIPHER_ORDER **tail)
 {
+    //if current cipher is already inserted and is at the end
     if (curr == *tail)
         return;
+    //if current cipher is currently at the head of the list, make the next cipher head
+    //essentially removing current cipher from the link.
     if (curr == *head)
         *head = curr->next;
+    //if current cipher has node before it, change the forward nodes `next` pointer from `curr` to be `curr.next`
+    //essentially removing current cipher from the link.
     if (curr->prev != NULL)
         curr->prev->next = curr->next;
+    //if current cipher has a node after it, change the aft nodes prev pointer from `curr` to be `curr.prev`
+    //essentially removing current cipher from the link.
     if (curr->next != NULL)
         curr->next->prev = curr->prev;
+    //insert the current ciper at the end
     (*tail)->next = curr;
+    //link current cipher to its forward node.
     curr->prev = *tail;
+    //add a sentinel node
     curr->next = NULL;
+    //update pointer inside tail to reflect the changes
     *tail = curr;
 }
 
@@ -673,6 +699,20 @@ static void ll_append_head(CIPHER_ORDER **head, CIPHER_ORDER *curr,
     *head = curr;
 }
 
+/**
+ * Finds all the SSL_CIPHERs that are available as part of the given `SSL_METHOD` and populates them in co_list
+ * called from `ssl_create_cipher_list`
+ * @param ssl_method ssl method
+ * @param num_of_ciphers
+ * @param disabled_mkey
+ * @param disabled_auth
+ * @param disabled_enc
+ * @param disabled_mac
+ * @param co_list output ARRAY with ciphers populated, should be already allocated with sizeof `CIPHER_ORDER * num_of_ciphers` bytes!
+ * Note that even though co_list is an array, each entry has a `prev` and `next` pointer, which means its also a linked list
+ * @param head_p pointer to store the head pointer of the linked list co_list
+ * @param tail_p pointer to store the tail pointer of linked list co_list
+ */
 static void ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method,
                                        int num_of_ciphers,
                                        uint32_t disabled_mkey,
@@ -804,7 +844,20 @@ static void ssl_cipher_collect_aliases(const SSL_CIPHER **ca_list,
 
     *ca_curr = NULL;            /* end of list */
 }
-
+/**
+ * mutate the cipherlist denoted by head_p/tail_p to insert a certain cipher
+ * @param cipher_id
+ * @param alg_mkey
+ * @param alg_auth
+ * @param alg_enc
+ * @param alg_mac
+ * @param min_tls
+ * @param algo_strength
+ * @param rule
+ * @param strength_bits
+ * @param head_p pointer to the head pointer of the linked list. (Head pointer is mutated)
+ * @param tail_p pointer to the tail pointer of the linked list. (Tail pointer is mutated)
+ */
 static void ssl_cipher_apply_rule(uint32_t cipher_id, uint32_t alg_mkey,
                                   uint32_t alg_auth, uint32_t alg_enc,
                                   uint32_t alg_mac, int min_tls,
@@ -892,6 +945,7 @@ static void ssl_cipher_apply_rule(uint32_t cipher_id, uint32_t alg_mkey,
             BIO_printf(trc_out, "Action = %d\n", rule);
 
         /* add the cipher if it has not been added yet. */
+        //Insert cipher to the end of linkedList.
         if (rule == CIPHER_ADD) {
             /* reverse == 0 */
             if (!curr->active) {
@@ -942,7 +996,12 @@ static void ssl_cipher_apply_rule(uint32_t cipher_id, uint32_t alg_mkey,
 
     OSSL_TRACE_END(TLS_CIPHER);
 }
-
+/**
+ * rearrange the list based on SSL_CIPHER.strength_bits
+ * @param head_p
+ * @param tail_p
+ * @return
+ */
 static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
                                     CIPHER_ORDER **tail_p)
 {
@@ -1334,9 +1393,16 @@ static int ciphersuite_cb(const char *elem, int len, void *arg)
 
     return 1;
 }
-
+/**
+ * We reset the `tls13_ciphersuites` field of the SSL_CTX to include tls 1.3 ciphers
+ * called from `SSL_CTX_set_ciphersuites`
+ * @param SSL_CIPHER current list of SSL ciphers which will be modified
+ * @param str list of TLS 1.3 ciphers (check `OSSL_default_ciphersuites` for example)
+ * @return
+ */
 static __owur int set_ciphersuites(STACK_OF(SSL_CIPHER) **currciphers, const char *str)
 {
+    //create a stack of ciphers
     STACK_OF(SSL_CIPHER) *newciphers = sk_SSL_CIPHER_new_null();
 
     if (newciphers == NULL)
@@ -1355,7 +1421,13 @@ static __owur int set_ciphersuites(STACK_OF(SSL_CIPHER) **currciphers, const cha
 
     return 1;
 }
-
+/**
+ * Make a shallow copy of the input sort it and store it in cipher_list_by_id
+ * called from `update_cipher_list`
+ * @param cipher_list_by_id output cipher list sorted by id
+ * @param cipherstack input cipher list
+ * @return 0 if fail 1 if success
+ */
 static int update_cipher_list_by_id(STACK_OF(SSL_CIPHER) **cipher_list_by_id,
                                     STACK_OF(SSL_CIPHER) *cipherstack)
 {
@@ -1374,12 +1446,21 @@ static int update_cipher_list_by_id(STACK_OF(SSL_CIPHER) **cipher_list_by_id,
     return 1;
 }
 
+/**
+ * Update the cipher_list to remove any "unnecessary" tls1.3 ciphers we added
+ * and repopulate tls1.3 ciphers based on `tls13_ciphersuites` list.
+ * called from `SSL_CTX_set_ciphersuites`
+ * @param ctx
+ * @param SSL_CIPHER
+ * @return
+ */
 static int update_cipher_list(SSL_CTX *ctx,
                               STACK_OF(SSL_CIPHER) **cipher_list,
                               STACK_OF(SSL_CIPHER) **cipher_list_by_id,
                               STACK_OF(SSL_CIPHER) *tls13_ciphersuites)
 {
     int i;
+    //duplicate currently loaded cipher list
     STACK_OF(SSL_CIPHER) *tmp_cipher_list = sk_SSL_CIPHER_dup(*cipher_list);
 
     if (tmp_cipher_list == NULL)
@@ -1403,6 +1484,7 @@ static int update_cipher_list(SSL_CTX *ctx,
                 && (ssl_cipher_table_mac[sslc->algorithm2
                                          & SSL_HANDSHAKE_MAC_MASK].mask
                     & ctx->disabled_mac_mask) == 0) {
+            // insert tls 1.3 cipher suite
             sk_SSL_CIPHER_unshift(tmp_cipher_list, sslc);
         }
     }
@@ -1418,10 +1500,20 @@ static int update_cipher_list(SSL_CTX *ctx,
     return 1;
 }
 
+/**
+ * initialize tls1.3 cipher suites (optionally we rearrange and repopulate `cipher_list` with tls 1.3 ciphers if not null)
+ * called from `SSL_CTX_new_ex` called with
+ * @param ctx SSL context to be updated with the list of ciphers
+ * @param str a list of TLS 1.3 cipher suites (check `OSSL_default_ciphersuites()` for example.
+ * @return 1 if success 0 if fail
+ */
 int SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str)
 {
+    // load tls 1.3 ciphers by parsing the list of ciphers str
     int ret = set_ciphersuites(&(ctx->tls13_ciphersuites), str);
 
+    // when called from `SSL_CTX_new_ex` this path is most likely not taken! since cipher_list will be initialized as null,
+    // and we didn't touch it previously
     if (ret && ctx->cipher_list != NULL)
         return update_cipher_list(ctx, &ctx->cipher_list, &ctx->cipher_list_by_id,
                                   ctx->tls13_ciphersuites);
@@ -1452,6 +1544,10 @@ int SSL_set_ciphersuites(SSL *s, const char *str)
     return ret;
 }
 
+/**
+ * TODO: inspect this further. We might need to do some hacks here to prefer XChaCha20
+ * We populate and sort the list of ciphers based on their availability and strength.
+ */
 STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
                                              STACK_OF(SSL_CIPHER) *tls13_ciphersuites,
                                              STACK_OF(SSL_CIPHER) **cipher_list,
@@ -1498,7 +1594,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
         ERR_raise(ERR_LIB_SSL, ERR_R_MALLOC_FAILURE);
         return NULL;          /* Failure */
     }
-
+    //finds available SS_CIPHER from SSL_METHOD and stores them in co_list, head, tail.
     ssl_cipher_collect_ciphers(ssl_method, num_of_ciphers,
                                disabled_mkey, disabled_auth, disabled_enc,
                                disabled_mac, co_list, &head, &tail);
@@ -1512,6 +1608,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
      * server has both certificates, and is using the DEFAULT, or a client
      * preference).
      */
+    //add cipher to the co_list
     ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, 0, 0, 0, 0, CIPHER_ADD,
                           -1, &head, &tail);
     ssl_cipher_apply_rule(0, SSL_kECDHE, 0, 0, 0, 0, 0, CIPHER_ADD, -1, &head,
@@ -1537,6 +1634,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
     ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_ADD, -1, &head, &tail);
 
     /* Low priority for MD5 */
+    // move md5 to the end
     ssl_cipher_apply_rule(0, 0, 0, 0, SSL_MD5, 0, 0, CIPHER_ORD, -1, &head,
                           &tail);
 
@@ -1605,6 +1703,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
      */
     num_of_group_aliases = OSSL_NELEM(cipher_aliases);
     num_of_alias_max = num_of_ciphers + num_of_group_aliases + 1;
+    //temporary array of SSL_CIPHER (ca = cipher alias)
     ca_list = OPENSSL_malloc(sizeof(*ca_list) * num_of_alias_max);
     if (ca_list == NULL) {
         OPENSSL_free(co_list);
@@ -1676,6 +1775,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(SSL_CTX *ctx,
      * The cipher selection for the list is done. The ciphers are added
      * to the resulting precedence to the STACK_OF(SSL_CIPHER).
      */
+    //iterate through co_list, insert the cipher into cipherstack
     for (curr = head; curr != NULL; curr = curr->next) {
         if (curr->active) {
             if (!sk_SSL_CIPHER_push(cipherstack, curr->cipher)) {
@@ -2244,6 +2344,7 @@ const char *OSSL_default_cipher_list(void)
 }
 
 /*
+ * TODO: we definitely need to update this place for XChaCha20!!
  * Default list of TLSv1.3 (and later) ciphers
  * TLS_DEFAULT_CIPHERSUITES deprecated in 3.0.0
  * Update both macro and function simultaneously

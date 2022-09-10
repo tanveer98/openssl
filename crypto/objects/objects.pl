@@ -20,22 +20,22 @@ my $YEAR = OpenSSL::copyright::latest(($0, $ARGV[1], $ARGV[0]));
 open (NUMIN,"$ARGV[1]") || die "Can't open number file $ARGV[1]";
 $max_nid=0;
 $o=0;
-while(<NUMIN>)
+while(<NUMIN>) #most likely reading obj_mac.num file.
 	{
-	s|\R$||;
-	$o++;
-	s/#.*$//;
-	next if /^\s*$/;
-	$_ = 'X'.$_;
-	($Cname,$mynum) = split;
+	s|\R$||; #replace END OF LINE character with empty string
+	$o++; #update counter
+	s/#.*$//; #remove comments
+	next if /^\s*$/; #skip if the entire line is just whitespace
+	$_ = 'X'.$_; #concat "X" with $_ ($_ is probably the current line?)
+	($Cname,$mynum) = split; #get the first two words of line
 	$Cname =~ s/^X//;
 	if (defined($nidn{$mynum}))
 		{ die "$ARGV[1]:$o:There's already an object with NID ",$mynum," on line ",$order{$mynum},"\n"; }
 	if (defined($nid{$Cname}))
 		{ die "$ARGV[1]:$o:There's already an object with name ",$Cname," on line ",$order{$nid{$Cname}},"\n"; }
-	$nid{$Cname} = $mynum;
-	$nidn{$mynum} = $Cname;
-	$order{$mynum} = $o;
+	$nid{$Cname} = $mynum; #dict %nid is defined elsewhere
+	$nidn{$mynum} = $Cname; #probably else where as well
+	$order{$mynum} = $o; #line number
 	$max_nid = $mynum if $mynum > $max_nid;
 	}
 close NUMIN;
@@ -43,7 +43,7 @@ close NUMIN;
 open (IN,"$ARGV[0]") || die "Can't open input file $ARGV[0]";
 $Cname="";
 $o=0;
-while (<IN>)
+while (<IN>) #most likely reading objects.txt file
 	{
 	s|\R$||;
 	$o++;

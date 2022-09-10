@@ -697,7 +697,7 @@ int SSL_CTX_set_ssl_version(SSL_CTX *ctx, const SSL_METHOD *meth)
     return 1;
 }
 #endif
-
+// Initialize a new SSL connection(?)
 SSL *SSL_new(SSL_CTX *ctx)
 {
     if (ctx == NULL) {
@@ -730,7 +730,7 @@ int ossl_ssl_init(SSL *ssl, SSL_CTX *ctx, int type)
 
     return 1;
 }
-
+// This is the definition of SSL_CTX.SSL_METHD.ssl_new()
 SSL *ossl_ssl_connection_new(SSL_CTX *ctx)
 {
     SSL_CONNECTION *s;
@@ -3646,7 +3646,7 @@ static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b)
  * variable. The reason is that the functions aren't static, they're exposed
  * via ssl.h.
  */
-
+// Programmatic entrypoint, which creates a ssl_ctx_st, called from SSL_CTX_new
 SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
                         const SSL_METHOD *meth)
 {
@@ -3718,6 +3718,7 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
 #endif
 
     /* initialize cipher/digest methods table */
+    //Loads the initial list of ciphers, md, signature and key exchange algorithms
     if (!ssl_load_ciphers(ret))
         goto err2;
     /* initialise sig algs */
@@ -3728,9 +3729,11 @@ SSL_CTX *SSL_CTX_new_ex(OSSL_LIB_CTX *libctx, const char *propq,
     if (!ssl_load_groups(ret))
         goto err2;
 
+    // update the cipher suit list with tls 1.3 ciphers
     if (!SSL_CTX_set_ciphersuites(ret, OSSL_default_ciphersuites()))
         goto err;
 
+    // Populate and we rearrange the cipher list based on strength
     if (!ssl_create_cipher_list(ret,
                                 ret->tls13_ciphersuites,
                                 &ret->cipher_list, &ret->cipher_list_by_id,
@@ -4399,7 +4402,7 @@ static int ssl_do_handshake_intern(void *vargs)
 
     return sc->handshake_func(s);
 }
-
+// Entry point for handshake, usually called by SSL_accept or SSL_connect
 int SSL_do_handshake(SSL *s)
 {
     int ret = 1;
@@ -6822,7 +6825,9 @@ void SSL_set_allow_early_data_cb(SSL *s,
     sc->allow_early_data_cb = cb;
     sc->allow_early_data_cb_data = arg;
 }
-
+/**
+ * called from `ssl_load_ciphers`
+ */
 const EVP_CIPHER *ssl_evp_cipher_fetch(OSSL_LIB_CTX *libctx,
                                        int nid,
                                        const char *properties)

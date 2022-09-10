@@ -23,6 +23,7 @@ static void ssl_library_stop(void);
 
 static CRYPTO_ONCE ssl_base = CRYPTO_ONCE_STATIC_INIT;
 static int ssl_base_inited = 0;
+// define a function called `ossl_init_ssl_base` which will be called in the `RUN_ONCE` macro
 DEFINE_RUN_ONCE_STATIC(ossl_init_ssl_base)
 {
 #ifndef OPENSSL_NO_COMP
@@ -83,6 +84,7 @@ static void ssl_library_stop(void)
     }
 }
 
+//This looks important, called from SSL_CTX_new_ex <- SSL_CTX_new
 /*
  * If this function is called with a non NULL settings value then it must be
  * called prior to any threads making calls to any OpenSSL functions,

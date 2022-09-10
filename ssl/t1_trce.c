@@ -24,7 +24,7 @@ typedef struct {
 # define ssl_trace_list(bio, indent, msg, msglen, value, table) \
     do_ssl_trace_list(bio, indent, msg, msglen, value, \
                       table, OSSL_NELEM(table))
-
+//If only C had a native hashmap implementation, then this call would have been O(1) instead of O(n) :(
 static const char *do_ssl_trace_str(int val, const ssl_trace_tbl *tbl,
                                     size_t ntbl)
 {
@@ -103,7 +103,10 @@ static const ssl_trace_tbl ssl_handshake_tbl[] = {
     {SSL3_MT_MESSAGE_HASH, "MessageHash"}
 };
 
-/* Cipher suites */
+/* Cipher suites, complete list at
+ * https://wiki.mozilla.org/Security/Cipher_Suites
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
+ */
 static const ssl_trace_tbl ssl_ciphers_tbl[] = {
     {0x0000, "TLS_NULL_WITH_NULL_NULL"},
     {0x0001, "TLS_RSA_WITH_NULL_MD5"},
@@ -948,6 +951,7 @@ static int ssl_print_extensions(BIO *bio, int indent, int server,
     return 1;
 }
 
+// potentially interesting function
 static int ssl_print_client_hello(BIO *bio, const SSL_CONNECTION *sc, int indent,
                                   const unsigned char *msg, size_t msglen)
 {
@@ -1015,6 +1019,7 @@ static int dtls_print_hello_vfyrequest(BIO *bio, int indent,
     return 1;
 }
 
+//potentially interesting function
 static int ssl_print_server_hello(BIO *bio, int indent,
                                   const unsigned char *msg, size_t msglen)
 {
@@ -1422,6 +1427,7 @@ static int ssl_print_ticket(BIO *bio, int indent, const SSL_CONNECTION *sc,
     return 1;
 }
 
+//potential entry point for ssl_print_server_hello and ssl_print_client_hello
 static int ssl_print_handshake(BIO *bio, const SSL_CONNECTION *sc, int server,
                                const unsigned char *msg, size_t msglen,
                                int indent)
@@ -1531,6 +1537,7 @@ static int ssl_print_handshake(BIO *bio, const SSL_CONNECTION *sc, int server,
     return 1;
 }
 
+// I wonder where this is called from?
 void SSL_trace(int write_p, int version, int content_type,
                const void *buf, size_t msglen, SSL *ssl, void *arg)
 {

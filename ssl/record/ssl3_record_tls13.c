@@ -21,6 +21,11 @@
  *    0: On failure
  *    1: if the record encryption/decryption was successful.
  */
+/**
+ * TODO: find out how encryption/decryption happens using EVP_CIPHER_CTX, and how SSL_CIPHER is converted to EVP_CIPHER!
+ * This seems to be the actual method used for encrypting data in tls 1.3!!
+ * called from ssl/record/rec_layer_s3.c `do_ssl3_write` either directly or indirectly via ssl_method.ssl3_enc.enc
+ */
 int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
               ossl_unused SSL_MAC_BUF *mac, ossl_unused size_t macsize)
 {
@@ -64,6 +69,7 @@ int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         return 0;
     }
 
+    //TODO: find out more about SSL sessions
     if (s->early_data_state == SSL_EARLY_DATA_WRITING
             || s->early_data_state == SSL_EARLY_DATA_WRITE_RETRY) {
         if (s->session != NULL && s->session->ext.max_early_data > 0) {
@@ -85,6 +91,7 @@ int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
             SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
             return 0;
         }
+        //wtf??
         alg_enc = s->s3.tmp.new_cipher->algorithm_enc;
     }
 
@@ -127,12 +134,13 @@ int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
         /* Sequence has wrapped */
         return 0;
     }
-
+    // initialize EVP_CIPHER_CTX?
     if (EVP_CipherInit_ex(ctx, NULL, NULL, NULL, iv, sending) <= 0) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, ERR_R_INTERNAL_ERROR);
         return 0;
     }
 
+    //TODO find out what this does?
     /* Set up the AAD */
     if (!WPACKET_init_static_len(&wpkt, recheader, sizeof(recheader), 0)
             || !WPACKET_put_bytes_u8(&wpkt, rec->type)
@@ -150,7 +158,9 @@ int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
      * For CCM we must explicitly set the total plaintext length before we add
      * any AAD.
      */
-    if (((alg_enc & SSL_AESCCM) != 0
+    //encryption/decryption here!
+    if (
+            ((alg_enc & SSL_AESCCM) != 0
                  && EVP_CipherUpdate(ctx, NULL, &lenu, NULL,
                                      (unsigned int)rec->length) <= 0)
             || EVP_CipherUpdate(ctx, NULL, &lenu, recheader,
@@ -158,7 +168,8 @@ int tls13_enc(SSL_CONNECTION *s, SSL3_RECORD *recs, size_t n_recs, int sending,
             || EVP_CipherUpdate(ctx, rec->data, &lenu, rec->input,
                                 (unsigned int)rec->length) <= 0
             || EVP_CipherFinal_ex(ctx, rec->data + lenu, &lenf) <= 0
-            || (size_t)(lenu + lenf) != rec->length) {
+            || (size_t)(lenu + lenf) != rec->length
+        ) {
         return 0;
     }
 
